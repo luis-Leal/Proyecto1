@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mi Primera App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lista de Usuarios</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Edad</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-usuarios">
+        </tbody>
+    </table>
+
+    <script>
+        fetch('/api/usuarios')
+            .then(res => res.json())
+            .then(usuarios => {
+                const tbody = document.getElementById('tabla-usuarios');
+                usuarios.forEach(usuario => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${usuario.id}</td>
+                            <td>${usuario.nombre}</td>
+                            <td>${usuario.edad}</td>
+                        </tr>
+                    `;
+                });
+            });
+    </script>
+</body>
+</html>
