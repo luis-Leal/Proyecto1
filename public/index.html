@@ -2,69 +2,292 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Mi Primera App</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            background-color: #f5f5f5;
-        }
-        h1 {
-            color: #333;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        th {
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px;
-            text-align: left;
-        }
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-        }
-        tr:hover {
-            background-color: #f9f9f9;
-        }
-    </style>
+    <title>Gestión de Usuarios</title>
+    <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-    <h1>Lista de Usuarios</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Edad</th>
-            </tr>
-        </thead>
-        <tbody id="tabla-usuarios">
-        </tbody>
-    </table>
 
-    <script>
-        fetch('/api/usuarios')
-            .then(res => res.json())
-            .then(usuarios => {
-                const tbody = document.getElementById('tabla-usuarios');
-                usuarios.forEach(usuario => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${usuario.id}</td>
-                            <td>${usuario.nombre}</td>
-                            <td>${usuario.edad}</td>
-                        </tr>
-                    `;
-                });
-            });
-    </script>
+<!-- ── PANTALLA DE LOGIN/REGISTRO ── -->
+<div id="pantalla-auth">
+    <div class="card">
+        <!-- LOGIN -->
+        <div id="form-login">
+            <h2>Iniciar Sesión</h2>
+            <div id="msg-login"></div>
+            <div class="campo">
+                <label>Email</label>
+                <input type="email" id="login-email" placeholder="tu@email.com">
+            </div>
+            <div class="campo">
+                <label>Contraseña</label>
+                <input type="password" id="login-password" placeholder="••••••••">
+            </div>
+            <button class="btn" onclick="login()">Iniciar Sesión</button>
+            <p class="enlace" onclick="mostrarRegistro()">¿No tienes cuenta? Regístrate</p>
+        </div>
+
+        <!-- REGISTRO -->
+        <div id="form-registro" style="display:none">
+            <h2>Crear Cuenta</h2>
+            <div id="msg-registro"></div>
+            <div class="campo">
+                <label>Nombre</label>
+                <input type="text" id="reg-nombre" placeholder="Tu nombre">
+            </div>
+            <div class="campo">
+                <label>Email</label>
+                <input type="email" id="reg-email" placeholder="tu@email.com">
+            </div>
+            <div class="campo">
+                <label>Contraseña</label>
+                <input type="password" id="reg-password" placeholder="••••••••">
+            </div>
+            <button class="btn" onclick="registro()">Registrarse</button>
+            <p class="enlace" onclick="mostrarLogin()">¿Ya tienes cuenta? Inicia sesión</p>
+        </div>
+    </div>
+</div>
+
+<!-- ── PANEL PRINCIPAL ── -->
+<div id="pantalla-panel">
+    <div class="navbar">
+        <span>👤 Gestión de Usuarios</span>
+        <div>
+            <span id="nombre-usuario"></span> &nbsp;
+            <button class="btn btn-rojo" style="width:auto;padding:5px 15px" onclick="cerrarSesion()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="contenido">
+        <button class="btn" style="width:auto;margin-bottom:20px" onclick="abrirModalCrear()">+ Nuevo Usuario</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-usuarios"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── MODAL CREAR/EDITAR ── -->
+<div class="modal-fondo" id="modal">
+    <div class="modal">
+        <h3 id="modal-titulo">Nuevo Usuario</h3>
+        <div id="msg-modal"></div>
+        <input type="hidden" id="modal-id">
+        <div class="campo">
+            <label>Nombre</label>
+            <input type="text" id="modal-nombre" placeholder="Nombre completo">
+        </div>
+        <div class="campo">
+            <label>Email</label>
+            <input type="email" id="modal-email" placeholder="email@ejemplo.com">
+        </div>
+        <div class="campo" id="campo-password">
+            <label>Contraseña</label>
+            <input type="password" id="modal-password" placeholder="••••••••">
+        </div>
+        <div class="campo">
+            <label>Rol</label>
+            <select id="modal-rol">
+                <option value="usuario">Usuario</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px">
+            <button class="btn btn-azul" onclick="guardarUsuario()">Guardar</button>
+            <button class="btn btn-rojo" onclick="cerrarModal()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let token = localStorage.getItem('token');
+    let modoEdicion = false;
+
+    // Si ya hay token, ir directo al panel
+    if (token) mostrarPanel();
+
+    // ── AUTENTICACIÓN ──────────────────────────
+
+    function mostrarRegistro() {
+        document.getElementById('form-login').style.display = 'none';
+        document.getElementById('form-registro').style.display = 'block';
+    }
+
+    function mostrarLogin() {
+        document.getElementById('form-registro').style.display = 'none';
+        document.getElementById('form-login').style.display = 'block';
+    }
+
+    async function login() {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            token = data.token;
+            localStorage.setItem('token', token);
+            document.getElementById('nombre-usuario').textContent = data.nombre;
+            mostrarPanel();
+        } else {
+            mostrarMensaje('msg-login', data.error, 'error');
+        }
+    }
+
+    async function registro() {
+        const nombre = document.getElementById('reg-nombre').value;
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+
+        const res = await fetch('/api/registro', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            mostrarMensaje('msg-registro', '¡Cuenta creada! Ahora inicia sesión.', 'exito');
+            setTimeout(mostrarLogin, 1500);
+        } else {
+            mostrarMensaje('msg-registro', data.error, 'error');
+        }
+    }
+
+    function cerrarSesion() {
+        localStorage.removeItem('token');
+        token = null;
+        document.getElementById('pantalla-panel').style.display = 'none';
+        document.getElementById('pantalla-auth').style.display = 'flex';
+    }
+
+    // ── PANEL ──────────────────────────────────
+
+    function mostrarPanel() {
+        document.getElementById('pantalla-auth').style.display = 'none';
+        document.getElementById('pantalla-panel').style.display = 'block';
+        cargarUsuarios();
+    }
+
+    async function cargarUsuarios() {
+        const res = await fetch('/api/usuarios', {
+            headers: { 'authorization': token }
+        });
+        const usuarios = await res.json();
+        const tbody = document.getElementById('tabla-usuarios');
+        tbody.innerHTML = '';
+        usuarios.forEach(u => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>${u.nombre}</td>
+                    <td>${u.email}</td>
+                    <td>${u.rol}</td>
+                    <td>${u.fecha_creacion}</td>
+                    <td class="acciones">
+                        <button class="btn-small btn-editar" onclick="abrirModalEditar(${u.id}, '${u.nombre}', '${u.email}', '${u.rol}')">Editar</button>
+                        <button class="btn-small btn-eliminar" onclick="eliminarUsuario(${u.id})">Eliminar</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // ── MODAL ──────────────────────────────────
+
+    function abrirModalCrear() {
+        modoEdicion = false;
+        document.getElementById('modal-titulo').textContent = 'Nuevo Usuario';
+        document.getElementById('modal-id').value = '';
+        document.getElementById('modal-nombre').value = '';
+        document.getElementById('modal-email').value = '';
+        document.getElementById('modal-password').value = '';
+        document.getElementById('modal-rol').value = 'usuario';
+        document.getElementById('campo-password').style.display = 'block';
+        document.getElementById('msg-modal').innerHTML = '';
+        document.getElementById('modal').classList.add('activo');
+    }
+
+    function abrirModalEditar(id, nombre, email, rol) {
+        modoEdicion = true;
+        document.getElementById('modal-titulo').textContent = 'Editar Usuario';
+        document.getElementById('modal-id').value = id;
+        document.getElementById('modal-nombre').value = nombre;
+        document.getElementById('modal-email').value = email;
+        document.getElementById('modal-rol').value = rol;
+        document.getElementById('campo-password').style.display = 'none';
+        document.getElementById('msg-modal').innerHTML = '';
+        document.getElementById('modal').classList.add('activo');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modal').classList.remove('activo');
+    }
+
+    async function guardarUsuario() {
+        const id = document.getElementById('modal-id').value;
+        const nombre = document.getElementById('modal-nombre').value;
+        const email = document.getElementById('modal-email').value;
+        const password = document.getElementById('modal-password').value;
+        const rol = document.getElementById('modal-rol').value;
+
+        let url = '/api/usuarios';
+        let method = 'POST';
+        let body = { nombre, email, password, rol };
+
+        if (modoEdicion) {
+            url = `/api/usuarios/${id}`;
+            method = 'PUT';
+            body = { nombre, email, rol };
+        }
+
+        const res = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'authorization': token
+            },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            cerrarModal();
+            cargarUsuarios();
+        } else {
+            mostrarMensaje('msg-modal', data.error, 'error');
+        }
+    }
+
+    async function eliminarUsuario(id) {
+        if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+        await fetch(`/api/usuarios/${id}`, {
+            method: 'DELETE',
+            headers: { 'authorization': token }
+        });
+        cargarUsuarios();
+    }
+
+    // ── UTILIDADES ─────────────────────────────
+
+    function mostrarMensaje(id, texto, tipo) {
+        document.getElementById(id).innerHTML = `<div class="mensaje ${tipo}">${texto}</div>`;
+    }
+</script>
+
 </body>
 </html>
